@@ -51,7 +51,7 @@ Command
 LINEAR_TOKEN=xxxx linear_templater -f ~/Documents/output.json
 ```
 
-Result:
+Result
 
 ```json
 {
@@ -79,11 +79,14 @@ Result:
 Input file
 
 ```toml
+# build_batcave.toml
 title = "This is a parent issue"
 team_id = "yyyyyy"
 assignee_id = "xxxxxx"
 description = """
 We need to create a batcave
+
+See child tickets
 """
 
 [[children]]
@@ -92,6 +95,9 @@ team_id = "yyyyyy"
 assignee_id = "xxxxxx"
 description = """
 Figure out where to put the batcave
+
+ - Some place dark and dingy
+ - Make sure to coordinate with Alfred
 """
 
 [[children]]
@@ -100,6 +106,12 @@ team_id = "yyyyyy"
 assignee_id = "xxxxxx"
 description = """
 Make sure that we have enough bats
+
+### Acceptance Criteria
+
+- [ ] They can't bite too much
+- [ ] At least a dozen
+- [ ] Don't overdo it this time
 """
 
 ```
