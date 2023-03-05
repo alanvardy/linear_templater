@@ -1,5 +1,7 @@
 # Linear Templater
 
+[![Build Status](https://github.com/alanvardy/linear_templater/workflows/ci/badge.svg)](https://github.com/alanvardy/linear_templater) [![codecov](https://codecov.io/gh/alanvardy/linear_templater/branch/main/graph/badge.svg?token=9FBJK1SU0K)](https://codecov.io/gh/alanvardy/linear_templater) [![Crates.io](https://img.shields.io/crates/v/linear_templater.svg)](https://crates.io/crates/linear_templater)
+
 Create Linear Tickets from TOML files, it currently supports creating 1 parent ticket and unlimited child tickets per TOML.
 
 ## Install from Crates.io
