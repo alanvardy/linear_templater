@@ -1,6 +1,6 @@
 use clap::{Arg, Command};
 use colored::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
@@ -130,6 +130,26 @@ struct ChildTicket {
     description: Option<String>,
 }
 
+#[derive(Deserialize, Serialize)]
+struct IssueCreateResponse {
+    data: Data,
+}
+#[derive(Deserialize, Serialize)]
+#[allow(non_snake_case)]
+struct Data {
+    issueCreate: IssueCreate,
+}
+
+#[derive(Deserialize, Serialize)]
+struct IssueCreate {
+    issue: Issue,
+}
+
+#[derive(Deserialize, Serialize)]
+struct Issue {
+    id: String,
+}
+
 fn create_tickets(token: String, path: String) -> Result<String, String> {
     let mut toml_string = String::new();
 
@@ -140,31 +160,78 @@ fn create_tickets(token: String, path: String) -> Result<String, String> {
 
     let ticket: ParentTicket = toml::from_str(&toml_string).unwrap();
 
-    let title = ticket.title;
-    let team_id = ticket.team_id;
-    let assignee_id = ticket.assignee_id.unwrap_or_default();
-    let description = ticket.description.unwrap_or_default();
-
-    let query = format!(
-        "
-        mutation ($description: String) {{
-    issueCreate(input: {{
-        title: \"{title}\", 
-        teamId: \"{team_id}\", 
-        assigneeId: \"{assignee_id}\",
-        description: $description,
-    }}) {{
-        issue {{
-            id
-        }}
-    }}
-}}"
+    let mut variables = HashMap::new();
+    variables.insert("title".to_string(), ticket.title.clone());
+    variables.insert("teamId".to_string(), ticket.team_id);
+    variables.insert(
+        "assigneeId".to_string(),
+        ticket.assignee_id.unwrap_or_default(),
+    );
+    variables.insert(
+        "description".to_string(),
+        ticket.description.unwrap_or_default(),
     );
 
-    let mut variables = HashMap::new();
-    variables.insert("description".to_string(), description);
+    let query = "mutation (
+                    $title: String!
+                    $teamId: String!
+                    $assigneeId: String
+                    $description: String,
+                    $parentId: String
+                ) {
+                issueCreate(
+                    input: {
+                        title: $title
+                        teamId: $teamId
+                        assigneeId: $assigneeId
+                        description: $description
+                        parentId: $parentId
+                    }
+                ) {
+                    issue {
+                        id
+                    }
+                }
+                }
+                "
+    .to_string();
 
-    request::gql(token, query, variables)
+    let response = request::gql(token.clone(), query.clone(), variables)?;
+    let data: Result<IssueCreateResponse, _> = serde_json::from_str(&response);
+
+    match data {
+        Ok(IssueCreateResponse {
+            data:
+                Data {
+                    issueCreate:
+                        IssueCreate {
+                            issue: Issue { id },
+                        },
+                },
+        }) => {
+            println!("Created issue [{}] {}, ", id, ticket.title);
+
+            for child in ticket.children.iter() {
+                let mut variables = HashMap::new();
+                variables.insert("title".to_string(), child.title.clone());
+                variables.insert("teamId".to_string(), child.team_id.clone());
+                variables.insert("parentId".to_string(), id.clone());
+                variables.insert(
+                    "assigneeId".to_string(),
+                    child.assignee_id.clone().unwrap_or_default(),
+                );
+                variables.insert(
+                    "description".to_string(),
+                    child.description.clone().unwrap_or_default(),
+                );
+                request::gql(token.clone(), query.clone(), variables)?;
+                println!("Created child issue {}, ", ticket.title);
+            }
+            Ok("Done".to_string())
+        }
+
+        Err(err) => Err(format!("Could not parse response for item: {err:?}")),
+    }
 }
 
 fn write_json_to_file(json: String, path: String) -> std::result::Result<String, String> {
