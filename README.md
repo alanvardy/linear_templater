@@ -35,8 +35,8 @@ Usage: linear_templater [OPTIONS]
 Options:
   -f, --fetch_ids <JSON FILE OUTPUT PATH>
           Fetch ids for player and teams, and output to provided path as a JSON file
-  -c, --create_tickets <PATH TO TOML FILE>
-          Read a TOML file and create tickets from it
+  -c, --create_issues <PATH TO TOML FILE>
+          Read a TOML file and create a issues from it
   -h, --help
           Print help
   -V, --version
@@ -66,7 +66,15 @@ Result
           {
             "team": {
               "id": "yyyyyy",
-              "name": "Justice League"
+              "name": "Justice League",
+              "projects": {
+                "nodes": [
+                  {
+                    "id": "zzzzzz",
+                    "name": "Upgrade infrastructure"
+                  }
+                ]
+              }
             }
           }
         ]
@@ -84,7 +92,9 @@ Input file
 # build_batcave.toml
 title = "This is a parent issue"
 team_id = "yyyyyy"
+# optional
 assignee_id = "xxxxxx"
+project_id = "zzzzzz"
 description = """
 We need to create a batcave
 
@@ -93,6 +103,7 @@ See child tickets
 
 [[children]]
 title = "This is a child issue that will be linked to the parent issue"
+# optional
 team_id = "yyyyyy"
 assignee_id = "xxxxxx"
 description = """
@@ -104,6 +115,7 @@ Figure out where to put the batcave
 
 [[children]]
 title = "This is a second child issue that will be linked to the parent issue"
+# optional
 team_id = "yyyyyy"
 assignee_id = "xxxxxx"
 description = """
