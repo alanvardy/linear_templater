@@ -21,7 +21,7 @@ cargo install linear_templater
 
 ## Usage
 
-You need to have the environment variable `LINEAR_TOKEN` set. I am currently implementing this way so that a `.env` file can be used per TOML directory and a person can seamlessly transition between multiple Linear workspaces. You can obtain your linear token from the API section of your account settings.
+You need to have the environment variable `LINEAR_TOKEN` set. I am currently implementing this way so that a `.envrc` file can be used per TOML directory and a person can seamlessly transition between multiple Linear workspaces. You can obtain your linear token from the API section of your account settings.
 
 Start with the help flag to get the latest commands
 
@@ -84,7 +84,7 @@ Result
 }
 ```
 
-#### Create a series of tickets from TOML files
+#### Create a series of tickets from a TOML file
 
 Input file
 
@@ -135,3 +135,24 @@ Command
 ```bash
 LINEAR_TOKEN=xxxx linear_templater -c ~/Documents/build_batcave.toml
 ```
+
+#### Create a series of tickets from all TOML files in a directory
+
+When passed a directory, Linear Templater will recursively walk through the directory and all sub-directories and create tickets from all the TOML files that are not `Cargo.toml`.
+
+Command
+
+```bash
+# Create tickets from all TOML files in the current directory
+LINEAR_TOKEN=xxxx linear_templater -c .
+```
+
+#### Use direnv to manage your LINEAR_TOKEN
+
+Install [direnv](https://github.com/direnv/direnv) using your package manager of choice
+
+```bash
+echo export LINEAR_TOKEN=xxxx > .envrc
+```
+
+This removes the need to prefix all your commands with LINEAR_TOKEN=xxxx

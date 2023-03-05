@@ -59,7 +59,7 @@ fn main() {
                 .short('c')
                 .long("create_issues")
                 .required(false)
-                .value_name("PATH TO TOML FILE")
+                .value_name("PATH TO TOML FILE OR DIRECTORY")
                 .help("Read a TOML file and create a issues from it"),
         )
         .get_matches();
@@ -85,6 +85,7 @@ fn main() {
 
 fn dispatch(arguments: Arguments) -> Result<String, String> {
     let token = std::env::var("LINEAR_TOKEN").expect("LINEAR_TOKEN environment variable not set");
+    check_for_latest_version();
     match arguments {
         Arguments {
             fetch_ids: Some(path),
@@ -93,7 +94,7 @@ fn dispatch(arguments: Arguments) -> Result<String, String> {
         Arguments {
             fetch_ids: None,
             create_issues: Some(path),
-        } => issue::create_issues(token, path.to_string()),
+        } => issue::create_issues_from_file_or_dir(token, path.to_string()),
         Arguments {
             fetch_ids: None,
             create_issues: None,
@@ -123,4 +124,24 @@ fn write_json_to_file(json: String, path: String) -> std::result::Result<String,
     println!("Response written to {path}");
 
     Ok(String::from("✓"))
+}
+
+fn check_for_latest_version() {
+    match request::get_latest_version() {
+        Ok(version) if version.as_str() != VERSION => {
+            println!(
+                "Latest {} version is {}, found {}.\nRun {} to update if you installed with Cargo",
+                APP,
+                version,
+                VERSION,
+                format!("cargo install {APP} --force").bright_cyan()
+            );
+        }
+        Ok(_) => (),
+        Err(err) => println!(
+            "{}, {:?}",
+            format!("Could not fetch {APP} version from Cargo.io").red(),
+            err
+        ),
+    };
 }

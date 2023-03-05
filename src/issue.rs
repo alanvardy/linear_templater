@@ -2,6 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
+use std::path::Path;
+extern crate walkdir;
+
+use walkdir::WalkDir;
 
 use crate::request;
 
@@ -25,6 +29,7 @@ const ISSUE_CREATE_DOC: &str = "mutation (
                 ) {
                     issue {
                         id
+                        url
                     }
                 }
                 }
@@ -66,9 +71,26 @@ struct IssueCreate {
 #[derive(Deserialize, Serialize)]
 struct Issue {
     id: String,
+    url: String,
 }
 
-pub fn create_issues(token: String, path: String) -> Result<String, String> {
+/// We want to support a file path or a directory
+pub fn create_issues_from_file_or_dir(token: String, path: String) -> Result<String, String> {
+    if Path::is_dir(Path::new(&path)) {
+        for entry in WalkDir::new(path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(is_issue_toml)
+        {
+            create_issues(token.clone(), entry.path().to_str().unwrap().to_string())?;
+        }
+        Ok("Done".to_string())
+    } else {
+        create_issues(token, path)
+    }
+}
+
+fn create_issues(token: String, path: String) -> Result<String, String> {
     let mut toml_string = String::new();
 
     fs::File::open(path.clone())
@@ -92,9 +114,9 @@ pub fn create_issues(token: String, path: String) -> Result<String, String> {
     variables.insert("description".to_string(), description);
 
     let response = request::gql(token.clone(), ISSUE_CREATE_DOC, variables)?;
-    let id = extract_id_from_response(response)?;
+    let Issue { id, url } = extract_id_from_response(response)?;
 
-    println!("Created issue [{}] {}", id, ticket.title);
+    println!("- [{}] {}", id, url);
 
     for child in ticket.children.iter() {
         let mut variables = HashMap::new();
@@ -110,25 +132,28 @@ pub fn create_issues(token: String, path: String) -> Result<String, String> {
         let child_description = child.description.clone().unwrap_or_default();
         variables.insert("description".to_string(), child_description);
         let response = request::gql(token.clone(), ISSUE_CREATE_DOC, variables)?.to_string();
-        let id = extract_id_from_response(response)?;
-        println!("Created child [{}] {}", id, child.title);
+        let Issue { id, url } = extract_id_from_response(response)?;
+        println!("  - [{}] {}", id, url);
     }
     Ok("Done".to_string())
 }
 
-fn extract_id_from_response(response: String) -> Result<String, String> {
+/// Returns true if it is a TOML file that can be processed
+fn is_issue_toml(entry: &walkdir::DirEntry) -> bool {
+    entry.file_name().to_str().unwrap().ends_with(".toml")
+        && !entry.file_name().to_str().unwrap().contains("Cargo.toml")
+}
+
+/// Get the id from an issue response, needed for parent issues and terminal output
+fn extract_id_from_response(response: String) -> Result<Issue, String> {
     let data: Result<IssueCreateResponse, _> = serde_json::from_str(&response);
 
     match data {
         Ok(IssueCreateResponse {
-            data:
-                Data {
-                    issueCreate:
-                        IssueCreate {
-                            issue: Issue { id },
-                        },
-                },
-        }) => Ok(id),
+            data: Data {
+                issueCreate: IssueCreate { issue },
+            },
+        }) => Ok(issue),
         Err(err) => Err(format!("Could not parse response for issue: {err:?}")),
     }
 }
