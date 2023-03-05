@@ -17,12 +17,9 @@ const ABOUT: &str = "Create Linear Tickets from TOML files";
 struct Arguments<'a> {
     fetch_ids: Option<&'a str>,
     create_tickets: Option<&'a str>,
-    token: String,
 }
 
 fn main() {
-    let token = std::env::var("LINEAR_TOKEN").expect("LINEAR_TOKEN environment variable not set");
-
     let app = Command::new(APP)
         .version(VERSION)
         .author(AUTHOR)
@@ -51,7 +48,6 @@ fn main() {
         create_tickets: matches
             .get_one::<String>("create_tickets")
             .map(|s| s.as_str()),
-        token,
     };
 
     match dispatch(arguments) {
@@ -67,21 +63,19 @@ fn main() {
 }
 
 fn dispatch(arguments: Arguments) -> Result<String, String> {
+    let token = std::env::var("LINEAR_TOKEN").expect("LINEAR_TOKEN environment variable not set");
     match arguments {
         Arguments {
             fetch_ids: Some(path),
             create_tickets: None,
-            token,
         } => fetch_ids(token, path.to_string()),
         Arguments {
             fetch_ids: None,
             create_tickets: Some(path),
-            token,
         } => create_tickets(token, path.to_string()),
         Arguments {
             fetch_ids: None,
             create_tickets: None,
-            token: _,
         } => Err(String::from(
             "Linear Templater cannot be run without parameters. To see available parameters use --help",
         )),

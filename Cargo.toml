@@ -2,6 +2,14 @@
 name = "linear_templater"
 version = "0.1.0"
 edition = "2021"
+authors = ["Alan Vardy <alan@vardy.cc>"]
+license = "MIT"
+description = "Create Linear Tickets from TOML files"
+readme = "README.md"
+homepage = "https://github.com/alanvardy/linear_templater"
+repository = "https://github.com/alanvardy/linear_templater"
+keywords = ["cli", "linear", "client", "toml"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
