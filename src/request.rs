@@ -8,7 +8,7 @@ const URL: &str = "https://api.linear.app/graphql";
 
 pub fn gql(
     token: String,
-    query: String,
+    query: &str,
     variables: HashMap<String, String>,
 ) -> Result<String, String> {
     let authorization: &str = &format!("Bearer {token}");
