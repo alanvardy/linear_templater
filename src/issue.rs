@@ -87,7 +87,7 @@ pub fn create_issues(token: String, path: String) -> Result<String, String> {
         ticket.description.unwrap_or_default(),
     );
 
-    let response = request::gql(token.clone(), ISSUE_CREATE_DOC, variables)?.to_string();
+    let response = request::gql(token.clone(), ISSUE_CREATE_DOC, variables)?;
     let id = extract_id_from_response(response)?;
 
     println!("Created issue [{}] {}, ", id, ticket.title);
