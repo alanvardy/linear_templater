@@ -1,4 +1,6 @@
+use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -36,15 +38,20 @@ const ISSUE_CREATE_DOC: &str = "mutation (
                 ";
 
 #[derive(Deserialize)]
+struct Template {
+    parent: ParentIssue,
+    children: Vec<ChildIssue>,
+    variables: HashMap<String, String>,
+}
+
+#[derive(Deserialize)]
 struct ParentIssue {
     title: String,
     team_id: String,
     project_id: Option<String>,
     assignee_id: Option<String>,
     description: Option<String>,
-    children: Vec<ChildIssue>,
 }
-
 #[derive(Deserialize)]
 struct ChildIssue {
     title: String,
@@ -100,38 +107,46 @@ fn create_issues(token: String, path: String) -> Result<String, String> {
 
     println!("Processing {path}");
 
-    let ticket: ParentIssue = toml::from_str(&toml_string).unwrap();
+    let Template {
+        parent,
+        children,
+        variables,
+    } = toml::from_str(&toml_string).unwrap();
 
-    let mut variables = HashMap::new();
-    variables.insert("title".to_string(), ticket.title.clone());
-    let team_id = ticket.team_id;
-    variables.insert("teamId".to_string(), team_id.clone());
-    let assignee_id = ticket.assignee_id.unwrap_or_default();
-    variables.insert("assigneeId".to_string(), assignee_id.clone());
-    let project_id = ticket.project_id.unwrap_or_default();
-    variables.insert("projectId".to_string(), project_id);
-    let description = ticket.description.unwrap_or_default();
-    variables.insert("description".to_string(), description);
+    let mut gql_variables = HashMap::new();
+    let title = fill_in_variables(parent.title.clone(), variables.clone());
+    gql_variables.insert("title".to_string(), title);
+    let team_id = parent.team_id;
+    gql_variables.insert("teamId".to_string(), team_id.clone());
+    let assignee_id = parent.assignee_id.unwrap_or_default();
+    gql_variables.insert("assigneeId".to_string(), assignee_id.clone());
+    let project_id = parent.project_id.unwrap_or_default();
+    gql_variables.insert("projectId".to_string(), project_id);
+    let description = parent.description.unwrap_or_default();
+    let description = fill_in_variables(description, variables.clone());
+    gql_variables.insert("description".to_string(), description);
 
-    let response = request::gql(token.clone(), ISSUE_CREATE_DOC, variables)?;
+    let response = request::gql(token.clone(), ISSUE_CREATE_DOC, gql_variables)?;
     let Issue { id, url } = extract_id_from_response(response)?;
 
     println!("- [{}] {}", id, url);
 
-    for child in ticket.children.iter() {
-        let mut variables = HashMap::new();
-        variables.insert("title".to_string(), child.title.clone());
+    for child in children.iter() {
+        let mut gql_variables = HashMap::new();
+        let title = fill_in_variables(child.title.clone(), variables.clone());
+        gql_variables.insert("title".to_string(), title);
         let child_team_id = child.team_id.clone().unwrap_or_else(|| team_id.clone());
-        variables.insert("teamId".to_string(), child_team_id);
-        variables.insert("parentId".to_string(), id.clone());
+        gql_variables.insert("teamId".to_string(), child_team_id);
+        gql_variables.insert("parentId".to_string(), id.clone());
         let child_a_id = child
             .assignee_id
             .clone()
             .unwrap_or_else(|| assignee_id.clone());
-        variables.insert("assigneeId".to_string(), child_a_id);
+        gql_variables.insert("assigneeId".to_string(), child_a_id);
         let child_description = child.description.clone().unwrap_or_default();
-        variables.insert("description".to_string(), child_description);
-        let response = request::gql(token.clone(), ISSUE_CREATE_DOC, variables)?.to_string();
+        let child_description = fill_in_variables(child_description, variables.clone());
+        gql_variables.insert("description".to_string(), child_description);
+        let response = request::gql(token.clone(), ISSUE_CREATE_DOC, gql_variables)?.to_string();
         let Issue { id, url } = extract_id_from_response(response)?;
         println!("  - [{}] {}", id, url);
     }
@@ -156,4 +171,12 @@ fn extract_id_from_response(response: String) -> Result<Issue, String> {
         }) => Ok(issue),
         Err(err) => Err(format!("Could not parse response for issue: {err:?}")),
     }
+}
+
+fn fill_in_variables(template: String, variables: HashMap<String, String>) -> String {
+    let mut handlebars = Handlebars::new();
+    handlebars.set_strict_mode(true);
+
+    handlebars.register_template_string("t1", template).unwrap();
+    handlebars.render("t1", &json!(variables)).unwrap()
 }

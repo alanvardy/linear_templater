@@ -1,6 +1,6 @@
 [package]
 name = "linear_templater"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Alan Vardy <alan@vardy.cc>"]
 license = "MIT"
@@ -21,3 +21,4 @@ clap = "4.1.8"
 colored = "2.0.0"
 toml = "0.7.2"
 walkdir = "2.3.2"
+handlebars = "4.3.6"

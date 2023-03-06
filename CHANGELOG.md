@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2023-03-05 v0.1.2
+
+- Add templating with handlebars
+
 ## 2023-03-05 v0.1.1
 
 - Refactored things and stuff

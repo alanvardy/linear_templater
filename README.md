@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/alanvardy/linear_templater/workflows/ci/badge.svg)](https://github.com/alanvardy/linear_templater) [![codecov](https://codecov.io/gh/alanvardy/linear_templater/branch/main/graph/badge.svg?token=9FBJK1SU0K)](https://codecov.io/gh/alanvardy/linear_templater) [![Crates.io](https://img.shields.io/crates/v/linear_templater.svg)](https://crates.io/crates/linear_templater)
 
-Create Linear Tickets from TOML files, it currently supports creating 1 parent ticket and unlimited child tickets per TOML.
+Create Linear Tickets from TOML files, it currently supports creating 1 parent ticket and unlimited child tickets per TOML. Supports handlebars syntax.
 
 ## Install from Crates.io
 
@@ -86,10 +86,14 @@ Result
 
 #### Create a series of tickets from a TOML file
 
-Input file
+Input file (uses [handlebars-style variables](https://handlebarsjs.com/))
 
 ```toml
 # build_batcave.toml
+[variables]
+name = "Alfred"
+
+[parent]
 title = "This is a parent issue"
 team_id = "yyyyyy"
 # optional
@@ -102,7 +106,7 @@ See child tickets
 """
 
 [[children]]
-title = "This is a child issue that will be linked to the parent issue"
+title = "This is a child issue for {{name}} to complete"
 # optional
 team_id = "yyyyyy"
 assignee_id = "xxxxxx"
@@ -110,7 +114,7 @@ description = """
 Figure out where to put the batcave
 
  - Some place dark and dingy
- - Make sure to coordinate with Alfred
+ - Make sure to coordinate with {{name}}
 """
 
 [[children]]
