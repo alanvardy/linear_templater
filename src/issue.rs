@@ -113,17 +113,18 @@ fn create_issues(token: String, path: String) -> Result<String, String> {
         variables,
     } = toml::from_str(&toml_string).unwrap();
 
-    let mut gql_variables = HashMap::new();
-    let title = fill_in_variables(parent.title.clone(), variables.clone());
-    gql_variables.insert("title".to_string(), title);
+    let title = fill_in_variables(parent.title.clone(), variables.clone())?;
     let team_id = parent.team_id;
-    gql_variables.insert("teamId".to_string(), team_id.clone());
     let assignee_id = parent.assignee_id.unwrap_or_default();
-    gql_variables.insert("assigneeId".to_string(), assignee_id.clone());
     let project_id = parent.project_id.unwrap_or_default();
+    let description_template = parent.description.unwrap_or_default();
+    let description = fill_in_variables(description_template, variables.clone())?;
+
+    let mut gql_variables = HashMap::new();
+    gql_variables.insert("title".to_string(), title);
+    gql_variables.insert("teamId".to_string(), team_id.clone());
+    gql_variables.insert("assigneeId".to_string(), assignee_id.clone());
     gql_variables.insert("projectId".to_string(), project_id);
-    let description = parent.description.unwrap_or_default();
-    let description = fill_in_variables(description, variables.clone());
     gql_variables.insert("description".to_string(), description);
 
     let response = request::gql(token.clone(), ISSUE_CREATE_DOC, gql_variables)?;
@@ -132,19 +133,20 @@ fn create_issues(token: String, path: String) -> Result<String, String> {
     println!("- [{}] {}", id, url);
 
     for child in children.iter() {
-        let mut gql_variables = HashMap::new();
-        let title = fill_in_variables(child.title.clone(), variables.clone());
-        gql_variables.insert("title".to_string(), title);
-        let child_team_id = child.team_id.clone().unwrap_or_else(|| team_id.clone());
-        gql_variables.insert("teamId".to_string(), child_team_id);
-        gql_variables.insert("parentId".to_string(), id.clone());
+        let title = fill_in_variables(child.title.clone(), variables.clone())?;
         let child_a_id = child
             .assignee_id
             .clone()
             .unwrap_or_else(|| assignee_id.clone());
+        let child_team_id = child.team_id.clone().unwrap_or_else(|| team_id.clone());
+        let child_description_template = child.description.clone().unwrap_or_default();
+        let child_description = fill_in_variables(child_description_template, variables.clone())?;
+
+        let mut gql_variables = HashMap::new();
+        gql_variables.insert("title".to_string(), title);
+        gql_variables.insert("teamId".to_string(), child_team_id);
+        gql_variables.insert("parentId".to_string(), id.clone());
         gql_variables.insert("assigneeId".to_string(), child_a_id);
-        let child_description = child.description.clone().unwrap_or_default();
-        let child_description = fill_in_variables(child_description, variables.clone());
         gql_variables.insert("description".to_string(), child_description);
         let response = request::gql(token.clone(), ISSUE_CREATE_DOC, gql_variables)?.to_string();
         let Issue { id, url } = extract_id_from_response(response)?;
@@ -169,14 +171,28 @@ fn extract_id_from_response(response: String) -> Result<Issue, String> {
                 issueCreate: IssueCreate { issue },
             },
         }) => Ok(issue),
-        Err(err) => Err(format!("Could not parse response for issue: {err:?}")),
+        Err(err) => Err(format!(
+            "Could not parse response for issue:
+            ---
+            {err:?}
+            ---
+            {response:?}"
+        )),
     }
 }
 
-fn fill_in_variables(template: String, variables: HashMap<String, String>) -> String {
+fn fill_in_variables(
+    template: String,
+    variables: HashMap<String, String>,
+) -> Result<String, String> {
     let mut handlebars = Handlebars::new();
     handlebars.set_strict_mode(true);
 
-    handlebars.register_template_string("t1", template).unwrap();
-    handlebars.render("t1", &json!(variables)).unwrap()
+    handlebars
+        .register_template_string("t1", template)
+        .map_err(|e| format!("Could not register template: {e:?}"))?;
+
+    handlebars
+        .render("t1", &json!(variables))
+        .map_err(|e| format!("Could not render template: {e:?}"))
 }

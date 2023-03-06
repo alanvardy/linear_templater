@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Improve error messaging on failures
+
 ## 2023-03-05 v0.1.2
 
 - Add templating with handlebars
