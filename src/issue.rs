@@ -60,22 +60,22 @@ struct ChildIssue {
     description: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct IssueCreateResponse {
-    data: Data,
+    data: Option<Data>,
 }
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(non_snake_case)]
 struct Data {
     issueCreate: IssueCreate,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct IssueCreate {
     issue: Issue,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct Issue {
     id: String,
     url: String,
@@ -116,7 +116,7 @@ fn create_issues(token: String, path: String) -> Result<String, String> {
     let title = fill_in_variables(parent.title.clone(), variables.clone())?;
     let team_id = parent.team_id;
     let assignee_id = parent.assignee_id.unwrap_or_default();
-    let project_id = parent.project_id.unwrap_or_default();
+    let project_id = parent.project_id;
     let description_template = parent.description.unwrap_or_default();
     let description = fill_in_variables(description_template, variables.clone())?;
 
@@ -124,7 +124,9 @@ fn create_issues(token: String, path: String) -> Result<String, String> {
     gql_variables.insert("title".to_string(), title);
     gql_variables.insert("teamId".to_string(), team_id.clone());
     gql_variables.insert("assigneeId".to_string(), assignee_id.clone());
-    gql_variables.insert("projectId".to_string(), project_id);
+    if let Some(id) = project_id {
+        gql_variables.insert("projectId".to_string(), id);
+    }
     gql_variables.insert("description".to_string(), description);
 
     let response = request::gql(token.clone(), ISSUE_CREATE_DOC, gql_variables)?;
@@ -167,11 +169,11 @@ fn extract_id_from_response(response: String) -> Result<Issue, String> {
 
     match data {
         Ok(IssueCreateResponse {
-            data: Data {
+            data: Some(Data {
                 issueCreate: IssueCreate { issue },
-            },
+            }),
         }) => Ok(issue),
-        Err(err) => Err(format!(
+        err => Err(format!(
             "Could not parse response for issue:
             ---
             {err:?}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2023-04-10 v0.1.3
+
 - Improve error messaging on failures
 
 ## 2023-03-05 v0.1.2
